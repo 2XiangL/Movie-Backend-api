@@ -26,6 +26,8 @@ pip3 install -r requirements.txt
 python3 app.py
 ```
 
+注意：你需要把data目录解压到项目根目录下
+
 ## API接口文档
 
 提供内容推荐和协同过滤两种推荐算法。
