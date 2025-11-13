@@ -12,6 +12,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from typing import Tuple, Dict, List, Optional
 import logging
+from .database_processor import DatabaseDataProcessor
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -29,6 +30,18 @@ class DataProcessor:
         """
         self.config = config
         self.ps = PorterStemmer()
+
+        # 检查是否使用数据库模式
+        self.use_database = config.get("data", {}).get("use_database", False)
+        self.db_processor = None
+
+        if self.use_database:
+            try:
+                self.db_processor = DatabaseDataProcessor(config)
+                logger.info("Database mode enabled")
+            except Exception as e:
+                logger.warning(f"Failed to initialize database processor, falling back to CSV: {e}")
+                self.use_database = False
 
         # Ensure NLTK data is available
         try:
@@ -93,54 +106,100 @@ class DataProcessor:
 
     def load_and_process_data(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """
-        Load and process the movie data from CSV files.
+        Load and process the movie data from CSV files or database.
 
         Returns:
             Tuple of (movies_df, new_df, movies2_df)
         """
         logger.info("Loading and processing data...")
 
-        # Load CSV files
-        movies_path = self._get_data_path(self.config["data"]["movies_csv"])
-        credits_path = self._get_data_path(self.config["data"]["credits_csv"])
+        if self.use_database and self.db_processor:
+            # 使用数据库模式
+            logger.info("Using database mode for data loading...")
+            movies = self.db_processor.load_movies_data_from_db()
 
-        if not os.path.exists(movies_path) or not os.path.exists(credits_path):
-            raise FileNotFoundError("Data files not found. Please ensure CSV files are in the data directory.")
+            # 重命名列以匹配CSV格式
+            if 'id' in movies.columns:
+                movies.rename(columns={'id': 'movie_id'}, inplace=True)
 
-        movies = pd.read_csv(movies_path)
-        credits = pd.read_csv(credits_path)
+            # Create movies2 dataframe (simplified version)
+            movies2 = movies.copy()
+            available_columns = ['movie_id', 'title', 'budget', 'overview', 'popularity',
+                               'release_date', 'revenue', 'runtime', 'status',
+                               'vote_average', 'vote_count']
+            movies2_columns = [col for col in available_columns if col in movies2.columns]
+            movies2 = movies2[movies2_columns]
 
-        # Merge dataframes
-        movies = movies.merge(credits, on='title')
+            # Extract features for recommendations
+            feature_columns = ['movie_id', 'title', 'overview', 'genres', 'keywords',
+                              'cast', 'crew', 'production_companies', 'release_date']
+            available_feature_columns = [col for col in feature_columns if col in movies.columns]
+            movies = movies[available_feature_columns]
+            movies.dropna(subset=['title', 'movie_id'], inplace=True)
 
-        # Create movies2 dataframe (simplified version)
-        movies2 = movies.copy()
-        movies2.drop(['homepage', 'tagline'], axis=1, inplace=True)
-        movies2 = movies2[['movie_id', 'title', 'budget', 'overview', 'popularity',
-                          'release_date', 'revenue', 'runtime', 'spoken_languages',
-                          'status', 'vote_average', 'vote_count']]
+        else:
+            # 使用CSV模式
+            logger.info("Using CSV mode for data loading...")
+            # Load CSV files
+            movies_path = self._get_data_path(self.config["data"]["movies_csv"])
+            credits_path = self._get_data_path(self.config["data"]["credits_csv"])
 
-        # Extract features for recommendations
-        movies = movies[['movie_id', 'title', 'overview', 'genres', 'keywords',
-                        'cast', 'crew', 'production_companies', 'release_date']]
-        movies.dropna(inplace=True)
+            if not os.path.exists(movies_path) or not os.path.exists(credits_path):
+                raise FileNotFoundError("Data files not found. Please ensure CSV files are in the data directory.")
+
+            movies = pd.read_csv(movies_path)
+            credits = pd.read_csv(credits_path)
+
+            # Merge dataframes
+            movies = movies.merge(credits, on='title')
+
+            # Create movies2 dataframe (simplified version)
+            movies2 = movies.copy()
+            movies2.drop(['homepage', 'tagline'], axis=1, inplace=True)
+            movies2 = movies2[['movie_id', 'title', 'budget', 'overview', 'popularity',
+                              'release_date', 'revenue', 'runtime', 'spoken_languages',
+                              'status', 'vote_average', 'vote_count']]
+
+            # Extract features for recommendations
+            movies = movies[['movie_id', 'title', 'overview', 'genres', 'keywords',
+                            'cast', 'crew', 'production_companies', 'release_date']]
+            movies.dropna(inplace=True)
 
         # Apply feature extraction functions
         logger.info("Extracting features...")
-        movies['genres'] = movies['genres'].apply(self.get_genres)
-        movies['keywords'] = movies['keywords'].apply(self.get_genres)
-        movies['top_cast'] = movies['cast'].apply(self.get_cast)
-        movies['director'] = movies['crew'].apply(self.get_crew)
-        movies['production_comp'] = movies['production_companies'].apply(self.get_genres)
+
+        if self.use_database and self.db_processor:
+            # 数据库模式 - 数据已经是列表格式，不需要解析JSON
+            # 确保数据不为空
+            movies['genres'] = movies['genres'].apply(lambda x: x if isinstance(x, list) else [])
+            movies['keywords'] = movies['keywords'].apply(lambda x: x if isinstance(x, list) else [])
+            # 从完整的cast列中提取前10个作为top_cast
+            if 'cast' in movies.columns:
+                movies['top_cast'] = movies['cast'].apply(lambda x: x[:10] if isinstance(x, list) and len(x) > 0 else [])
+            else:
+                movies['top_cast'] = []
+            movies['director'] = movies['crew'].apply(lambda x: x if isinstance(x, list) else [])
+            movies['production_comp'] = movies['production_companies'].apply(lambda x: x if isinstance(x, list) else [])
+        else:
+            # CSV模式 - 需要解析JSON字符串
+            movies['genres'] = movies['genres'].apply(self.get_genres)
+            movies['keywords'] = movies['keywords'].apply(self.get_genres)
+            movies['top_cast'] = movies['cast'].apply(self.get_cast)
+            movies['director'] = movies['crew'].apply(self.get_crew)
+            movies['production_comp'] = movies['production_companies'].apply(self.get_genres)
 
         # Clean text data
         logger.info("Cleaning text data...")
-        movies['overview'] = movies['overview'].apply(lambda x: x.split())
-        movies['genres'] = movies['genres'].apply(lambda x: [i.replace(" ", "") for i in x])
-        movies['keywords'] = movies['keywords'].apply(lambda x: [i.replace(" ", "") for i in x])
-        movies['tcast'] = movies['top_cast'].apply(lambda x: [i.replace(" ", "") for i in x])
-        movies['tcrew'] = movies['director'].apply(lambda x: [i.replace(" ", "") for i in x])
-        movies['tprduction_comp'] = movies['production_comp'].apply(lambda x: [i.replace(" ", "") for i in x])
+
+        # 处理overview - 处理可能的None值
+        movies['overview'] = movies['overview'].apply(lambda x: x.split() if pd.notna(x) and isinstance(x, str) else [])
+
+        # 处理文本数据 - 处理可能的空列表
+        movies['genres'] = movies['genres'].apply(lambda x: [i.replace(" ", "") for i in x] if x else [])
+        movies['keywords'] = movies['keywords'].apply(lambda x: [i.replace(" ", "") for i in x] if x else [])
+        movies['tcast'] = movies['top_cast'].apply(lambda x: [i.replace(" ", "") for i in x] if x else [])
+        movies['tcrew'] = movies['director'].apply(lambda x: [i.replace(" ", "") for i in x] if x else [])
+        movies['tprduction_comp'] = movies['production_comp'].apply(lambda x: [i.replace(" ", "") for i in x] if x else [])
 
         # Create tags column
         movies['tags'] = movies['overview'] + movies['genres'] + movies['keywords'] + movies['tcast'] + movies['tcrew']

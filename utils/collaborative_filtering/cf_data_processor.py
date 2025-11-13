@@ -13,6 +13,7 @@ import logging
 from typing import Tuple, Dict, List, Optional
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
+from ..cli.database_processor import DatabaseDataProcessor
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -30,6 +31,18 @@ class CollaborativeDataProcessor:
         """
         self.config = config
 
+        # 检查是否使用数据库模式
+        self.use_database = config.get("data", {}).get("use_database", False)
+        self.db_processor = None
+
+        if self.use_database:
+            try:
+                self.db_processor = DatabaseDataProcessor(config)
+                logger.info("Database mode enabled for collaborative filtering")
+            except Exception as e:
+                logger.warning(f"Failed to initialize database processor for CF, falling back to CSV: {e}")
+                self.use_database = False
+
     def _get_data_path(self, filename: str) -> str:
         """获取数据文件完整路径"""
         data_dir = self.config["data"]["data_directory"]
@@ -39,27 +52,43 @@ class CollaborativeDataProcessor:
         """加载电影数据"""
         logger.info("加载电影数据...")
 
-        movies_path = self._get_data_path(self.config["data"]["movies_csv"])
+        if self.use_database and self.db_processor:
+            # 使用数据库模式
+            logger.info("Using database mode for collaborative filtering...")
+            movies_df = self.db_processor.load_movies_data_from_db()
 
-        if not os.path.exists(movies_path):
-            raise FileNotFoundError(f"电影数据文件不存在: {movies_path}")
+            # 提取必要的电影信息
+            available_columns = ['movie_id', 'title', 'vote_average', 'vote_count', 'popularity', 'genres']
+            movies_processed = movies_df[available_columns].copy()
 
-        movies_df = pd.read_csv(movies_path)
+            # 数据库已经提供了列表格式的genres
+            movies_processed['genres_list'] = movies_processed['genres'].apply(lambda x: x if isinstance(x, list) else [])
+            movies_processed['main_genre'] = movies_processed['genres_list'].apply(lambda x: x[0] if x else 'Unknown')
 
-        # 提取必要的电影信息
-        movies_processed = movies_df[['id', 'title', 'vote_average', 'vote_count', 'popularity', 'genres']].copy()
-        movies_processed.rename(columns={'id': 'movie_id'}, inplace=True)
+        else:
+            # 使用CSV模式
+            logger.info("Using CSV mode for collaborative filtering...")
+            movies_path = self._get_data_path(self.config["data"]["movies_csv"])
 
-        # 解析电影类型
-        def extract_genres(genres_str):
-            try:
-                genres = ast.literal_eval(genres_str)
-                return [g['name'] for g in genres]
-            except:
-                return []
+            if not os.path.exists(movies_path):
+                raise FileNotFoundError(f"电影数据文件不存在: {movies_path}")
 
-        movies_processed['genres_list'] = movies_processed['genres'].apply(extract_genres)
-        movies_processed['main_genre'] = movies_processed['genres_list'].apply(lambda x: x[0] if x else 'Unknown')
+            movies_df = pd.read_csv(movies_path)
+
+            # 提取必要的电影信息
+            movies_processed = movies_df[['id', 'title', 'vote_average', 'vote_count', 'popularity', 'genres']].copy()
+            movies_processed.rename(columns={'id': 'movie_id'}, inplace=True)
+
+            # 解析电影类型
+            def extract_genres(genres_str):
+                try:
+                    genres = ast.literal_eval(genres_str)
+                    return [g['name'] for g in genres]
+                except:
+                    return []
+
+            movies_processed['genres_list'] = movies_processed['genres'].apply(extract_genres)
+            movies_processed['main_genre'] = movies_processed['genres_list'].apply(lambda x: x[0] if x else 'Unknown')
 
         logger.info(f"成功加载 {len(movies_processed)} 部电影数据")
         return movies_processed

@@ -17,6 +17,8 @@ class Config:
             "data_directory": str(DATA_DIR),
             "movies_csv": "tmdb_5000_movies.csv",
             "credits_csv": "tmdb_5000_credits.csv",
+            "use_database": True,  # 设置为True以启用数据库模式
+            "database_path": "movies.db",  # SQLite数据库文件路径
             "processed_files": {
                 "movies_dict": "movies_dict.pkl",
                 "new_df_dict": "new_df_dict.pkl",
@@ -51,6 +53,8 @@ class Config:
         "data": {
             "data_directory": str(DATA_DIR),
             "movies_csv": "tmdb_5000_movies.csv",
+            "use_database": True,  # 设置为True以启用数据库模式
+            "database_path": "movies.db",  # SQLite数据库文件路径
             "num_users": 1000,
             "min_ratings_per_user": 20,
             "max_ratings_per_user": 100
