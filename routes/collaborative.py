@@ -151,6 +151,95 @@ def similar_movies(movie_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@collaborative_bp.route('/similar-movies-by-name', methods=['GET'])
+def similar_movies_by_name():
+    """
+    通过电影名称查找相似电影
+
+    Query Parameters:
+    - movie_name: 电影名称 (必需)
+    - n: 结果数量 (可选，默认为10)
+    - fuzzy: 是否使用模糊匹配 (可选，默认为True)
+    """
+    def convert_numpy_types(obj):
+        import numpy as np
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, dict):
+            return {key: convert_numpy_types(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_numpy_types(item) for item in obj]
+        else:
+            return obj
+
+    try:
+        movie_name = request.args.get('movie_name')
+        if not movie_name:
+            return jsonify({"error": "Missing required parameter: movie_name"}), 400
+
+        n = request.args.get('n', type=int, default=10)
+        if n <= 0 or n > 50:
+            return jsonify({"error": "Parameter n must be between 1 and 50"}), 400
+
+        fuzzy = request.args.get('fuzzy', type=lambda x: x.lower() == 'true', default=True)
+
+        rec, movies_df, ratings_df = get_cf_system()
+
+        # 搜索电影
+        if fuzzy:
+            # 模糊匹配
+            movie_matches = movies_df[
+                movies_df['title'].str.contains(movie_name, case=False, na=False)
+            ]
+        else:
+            # 精确匹配
+            movie_matches = movies_df[
+                movies_df['title'].str.lower() == movie_name.lower()
+            ]
+
+        if movie_matches.empty:
+            return jsonify({
+                "error": f"Movie '{movie_name}' not found",
+                "suggestions": "Try using fuzzy search or check the movie name spelling"
+            }), 404
+
+        # 如果找到多个匹配，使用第一个
+        target_movie = movie_matches.iloc[0]
+        movie_id = target_movie['movie_id']
+        movie_title = target_movie['title']
+
+        # 查找相似电影
+        similar = rec.find_similar_movies(movie_id, n)
+
+        if not similar:
+            return jsonify({
+                "error": f"No similar movies found for '{movie_title}'",
+                "movie_id": convert_numpy_types(movie_id),
+                "movie_title": movie_title
+            }), 404
+
+        # Convert numpy types to Python native types
+        similar = convert_numpy_types(similar)
+
+        return jsonify({
+            "movie_id": convert_numpy_types(movie_id),
+            "movie_title": movie_title,
+            "similar_movies": similar,
+            "count": len(similar),
+            "search_info": {
+                "query": movie_name,
+                "fuzzy_search": fuzzy,
+                "total_matches": len(movie_matches)
+            }
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @collaborative_bp.route('/similar-users/<int:user_id>', methods=['GET'])
 def similar_users(user_id):
     """
