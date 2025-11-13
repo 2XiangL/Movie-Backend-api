@@ -60,7 +60,7 @@ class MovieRecommender:
             logger.error(f"Error getting movie info: {e}")
             return None
 
-    def find_similar_movies(self, movie_title: str, similarity_type: str = "tags") -> List[Tuple[str, float]]:
+    def find_similar_movies(self, movie_title: str, similarity_type: str = "tags") -> List[Dict]:
         """
         Find similar movies based on a similarity type.
 
@@ -69,7 +69,7 @@ class MovieRecommender:
             similarity_type: Type of similarity to use ("tags", "genres", "keywords", "cast", "production")
 
         Returns:
-            List of tuples (movie_title, similarity_score) sorted by similarity
+            List of dictionaries with movie info and similarity scores
         """
         try:
             if similarity_type not in self.similarity_matrices:
@@ -101,8 +101,14 @@ class MovieRecommender:
 
             for idx, score in movie_scores[1:]:  # Skip first (it's the movie itself)
                 if score >= threshold:
-                    movie_name = self.new_df.iloc[idx]['title']
-                    recommendations.append((movie_name, float(score)))
+                    movie_row = self.new_df.iloc[idx]
+                    movie_name = movie_row['title']
+                    movie_id = movie_row['movie_id']
+                    recommendations.append({
+                        'movie_id': int(movie_id),
+                        'title': movie_name,
+                        'similarity': float(score)
+                    })
 
             return recommendations
 
@@ -142,10 +148,15 @@ class MovieRecommender:
                 recommendations = self.find_similar_movies(movie_title, sim_type)
                 sim_type_name = self._get_similarity_type_name(sim_type)
 
-                for movie_name, score in recommendations:
+                for movie_data in recommendations:
+                    movie_name = movie_data['title']
+                    score = movie_data['similarity']
+                    movie_id = movie_data['movie_id']
+
                     if score >= threshold:
                         if movie_name not in all_recommendations:
                             all_recommendations[movie_name] = {
+                                'movie_id': movie_id,
                                 'title': movie_name,
                                 'scores': {},
                                 'avg_score': 0.0,
@@ -230,7 +241,7 @@ class MovieRecommender:
             logger.error(f"Error getting movie details: {e}")
             return None
 
-    def search_movies(self, query: str, limit: int = 10) -> List[str]:
+    def search_movies(self, query: str, limit: int = 10) -> List[Dict]:
         """
         Search for movies by title.
 
@@ -239,28 +250,49 @@ class MovieRecommender:
             limit: Maximum number of results
 
         Returns:
-            List of movie titles
+            List of dictionaries with movie info
         """
         try:
+            # Convert dictionary to DataFrame for easier searching
+            if isinstance(self.new_df, dict):
+                import pandas as pd
+                new_df = pd.DataFrame(self.new_df)
+            else:
+                new_df = self.new_df
+
             # Search for movies containing the query
-            matches = self.new_df[
-                self.new_df['title'].str.contains(query, case=False, na=False)
+            matches = new_df[
+                new_df['title'].str.contains(query, case=False, na=False)
             ]
 
             if not matches.empty:
-                return matches['title'].head(limit).tolist()
+                results = []
+                for _, row in matches.head(limit).iterrows():
+                    results.append({
+                        'movie_id': int(row['movie_id']),
+                        'title': row['title']
+                    })
+                return results
             else:
                 # Try fuzzy match using string similarity
                 from difflib import get_close_matches
-                all_titles = self.new_df['title'].tolist()
-                close_matches = get_close_matches(query, all_titles, n=limit, cutoff=0.6)
-                return close_matches
+                all_titles = new_df['title'].tolist()
+                title_matches = get_close_matches(query, all_titles, n=limit, cutoff=0.6)
+
+                results = []
+                for title in title_matches:
+                    movie_row = new_df[new_df['title'] == title].iloc[0]
+                    results.append({
+                        'movie_id': int(movie_row['movie_id']),
+                        'title': title
+                    })
+                return results
 
         except Exception as e:
             logger.error(f"Error searching movies: {e}")
             return []
 
-    def get_random_movies(self, limit: int = 10) -> List[str]:
+    def get_random_movies(self, limit: int = 10) -> List[Dict]:
         """
         Get random movie suggestions.
 
@@ -268,10 +300,24 @@ class MovieRecommender:
             limit: Number of random movies to return
 
         Returns:
-            List of random movie titles
+            List of dictionaries with random movie info
         """
         try:
-            return self.new_df['title'].sample(limit).tolist()
+            # Convert dictionary to DataFrame for easier sampling
+            if isinstance(self.new_df, dict):
+                import pandas as pd
+                new_df = pd.DataFrame(self.new_df)
+            else:
+                new_df = self.new_df
+
+            random_movies = new_df.sample(limit)
+            results = []
+            for _, row in random_movies.iterrows():
+                results.append({
+                    'movie_id': int(row['movie_id']),
+                    'title': row['title']
+                })
+            return results
         except Exception as e:
             logger.error(f"Error getting random movies: {e}")
             return []

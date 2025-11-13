@@ -32,6 +32,11 @@ python3 app.py
 
 提供内容推荐和协同过滤两种推荐算法。
 
+### 更新说明
+- **所有电影相关的JSON响应现在都包含`movie_id`字段**，便于前端进行电影标识和后续操作
+- 内容推荐接口已完全重构，确保所有推荐结果都包含电影ID信息
+- 协同过滤接口已检查并确认已包含电影ID信息
+
 ## 健康检查
 
 ### GET /health
@@ -86,11 +91,12 @@ python3 app.py
 **响应示例：**
 ```json
 {
-    "count": 10,
+    "count": 3,
     "movie": "Avatar",
     "recommendations": [
         {
             "avg_score": 1.0,
+            "movie_id": 1924,
             "scores": {
                 "Genre Match": 1.0
             },
@@ -101,6 +107,7 @@ python3 app.py
         },
         {
             "avg_score": 0.8944271909999159,
+            "movie_id": 98566,
             "scores": {
                 "Genre Match": 0.8944271909999159
             },
@@ -111,6 +118,7 @@ python3 app.py
         },
         {
             "avg_score": 0.8944271909999159,
+            "movie_id": 9824,
             "scores": {
                 "Genre Match": 0.8944271909999159
             },
@@ -118,76 +126,6 @@ python3 app.py
                 "Genre Match"
             ],
             "title": "Mystery Men"
-        },
-        {
-            "avg_score": 0.8944271909999159,
-            "scores": {
-                "Genre Match": 0.8944271909999159
-            },
-            "similarity_types": [
-                "Genre Match"
-            ],
-            "title": "The Shadow"
-        },
-        {
-            "avg_score": 0.8660254037844388,
-            "scores": {
-                "Genre Match": 0.8660254037844388
-            },
-            "similarity_types": [
-                "Genre Match"
-            ],
-            "title": "Pirates of the Caribbean: At World's End"
-        },
-        {
-            "avg_score": 0.8660254037844388,
-            "scores": {
-                "Genre Match": 0.8660254037844388
-            },
-            "similarity_types": [
-                "Genre Match"
-            ],
-            "title": "Pirates of the Caribbean: Dead Man's Chest"
-        },
-        {
-            "avg_score": 0.8660254037844388,
-            "scores": {
-                "Genre Match": 0.8660254037844388
-            },
-            "similarity_types": [
-                "Genre Match"
-            ],
-            "title": "The Avengers"
-        },
-        {
-            "avg_score": 0.8660254037844388,
-            "scores": {
-                "Genre Match": 0.8660254037844388
-            },
-            "similarity_types": [
-                "Genre Match"
-            ],
-            "title": "The Hobbit: The Battle of the Five Armies"
-        },
-        {
-            "avg_score": 0.8660254037844388,
-            "scores": {
-                "Genre Match": 0.8660254037844388
-            },
-            "similarity_types": [
-                "Genre Match"
-            ],
-            "title": "The Amazing Spider-Man"
-        },
-        {
-            "avg_score": 0.8660254037844388,
-            "scores": {
-                "Genre Match": 0.8660254037844388
-            },
-            "similarity_types": [
-                "Genre Match"
-            ],
-            "title": "Spider-Man 2"
         }
     ]
 }
@@ -204,9 +142,12 @@ python3 app.py
 ```json
 {
     "count": 1,
-    "query": "avatar",
+    "query": "Avatar",
     "results": [
-        "Avatar"
+        {
+            "movie_id": 19995,
+            "title": "Avatar"
+        }
     ]
 }
 ```
@@ -252,18 +193,16 @@ python3 app.py
 **响应示例：**
 ```json
 {
-    "count": 10,
+    "count": 2,
     "random_movies": [
-        "Amidst the Devil's Wings",
-        "Sharknado",
-        "Bad Grandpa",
-        "Battle for the Planet of the Apes",
-        "They Came Together",
-        "Time to Choose",
-        "Date Night",
-        "Deceptive Practice: The Mysteries and Mentors of Ricky Jay",
-        "Warrior",
-        "Prophecy"
+        {
+            "movie_id": 16619,
+            "title": "Ordinary People"
+        },
+        {
+            "movie_id": 12103,
+            "title": "Don't Say a Word"
+        }
     ]
 }
 ```
@@ -279,49 +218,24 @@ python3 app.py
 **响应示例：**
 ```json
 {
-    "count": 10,
-    "movie": "avatar",
+    "count": 3,
+    "movie": "Avatar",
     "similar_movies": [
-        [
-            "Aliens vs Predator: Requiem",
-            0.2665300196340371
-        ],
-        [
-            "Independence Day",
-            0.24602771043141894
-        ],
-        [
-            "Aliens",
-            0.23870495801314429
-        ],
-        [
-            "Titan A.E.",
-            0.2369241569216954
-        ],
-        [
-            "Meet Dave",
-            0.21995293510729183
-        ],
-        [
-            "E.T. the Extra-Terrestrial",
-            0.21995293510729183
-        ],
-        [
-            "Small Soldiers",
-            0.21982600255746473
-        ],
-        [
-            "Attack the Block",
-            0.21982600255746473
-        ],
-        [
-            "Lifeforce",
-            0.21977383072747692
-        ],
-        [
-            "Predators",
-            0.2172620473133704
-        ]
+        {
+            "movie_id": 19996,
+            "title": "Aliens vs Predator: Requiem",
+            "similarity": 0.2665300196340371
+        },
+        {
+            "movie_id": 602,
+            "title": "Independence Day",
+            "similarity": 0.24602771043141894
+        },
+        {
+            "movie_id": 679,
+            "title": "Aliens",
+            "similarity": 0.23870495801314429
+        }
     ],
     "similarity_type": "tags"
 }
@@ -396,6 +310,53 @@ python3 app.py
 }
 ```
 
+### GET /api/collaborative/similar-movies-by-name
+通过电影名称查找相似电影（新增接口）
+
+**参数：**
+- `movie_name` (必需): 电影名称，支持模糊匹配
+- `n` (可选): 相似电影数量，默认为10，最大50
+- `fuzzy` (可选): 是否使用模糊匹配，默认为true，可设置为false进行精确匹配
+
+**响应示例：**
+```json
+{
+    "count": 10,
+    "movie_id": 19995,
+    "movie_title": "Avatar",
+    "similar_movies": [
+        {
+            "movie_id": 462,
+            "similarity": 0.7327219331356214,
+            "title": "Erin Brockovich"
+        },
+        {
+            "movie_id": 21494,
+            "similarity": 0.6543455590854379,
+            "title": "Moliere"
+        },
+        {
+            "movie_id": 24206,
+            "similarity": 0.5500205445450306,
+            "title": "Silent Trigger"
+        }
+    ],
+    "search_info": {
+        "fuzzy_search": true,
+        "query": "Avatar",
+        "total_matches": 1
+    }
+}
+```
+
+**错误响应示例：**
+```json
+{
+    "error": "Movie 'NonExistentMovie123' not found",
+    "suggestions": "Try using fuzzy search or check the movie name spelling"
+}
+```
+
 ### GET /api/collaborative/search-movies
 搜索电影
 
@@ -406,16 +367,134 @@ python3 app.py
 **响应示例：**
 ```json
 {
-  "query": "avatar",
+  "query": "Avatar",
   "results": [
     {
       "movie_id": 19995,
       "title": "Avatar",
       "vote_average": 7.2,
-      "vote_count": 22400
+      "vote_count": 11800
     }
   ],
   "count": 1
+}
+```
+
+### GET /api/collaborative/recommend-user/<int:user_id>
+为用户推荐电影
+
+**参数：**
+- `user_id` (路径参数): 用户ID
+- `n` (可选): 推荐数量，默认为10，最大50
+
+**响应示例：**
+```json
+{
+    "user_id": 1,
+    "recommendations": [
+        {
+            "movie_id": 346081,
+            "title": "Sardaarji",
+            "predicted_rating": 4.97
+        },
+        {
+            "movie_id": 89861,
+            "title": "Stiff Upper Lips",
+            "predicted_rating": 4.97
+        },
+        {
+            "movie_id": 78373,
+            "title": "Dancer, Texas Pop. 81",
+            "predicted_rating": 4.96
+        }
+    ],
+    "count": 3
+}
+```
+
+### GET /api/collaborative/similar-users/<int:user_id>
+查找相似用户
+
+**参数：**
+- `user_id` (路径参数): 用户ID
+- `n` (可选): 相似用户数量，默认为10，最大50
+
+**响应示例：**
+```json
+{
+    "user_id": 1,
+    "similar_users": [
+        {
+            "user_id": 156,
+            "similarity": 0.8234
+        },
+        {
+            "user_id": 892,
+            "similarity": 0.7891
+        },
+        {
+            "user_id": 445,
+            "similarity": 0.7654
+        }
+    ],
+    "count": 10
+}
+```
+
+### GET /api/collaborative/user-profile/<int:user_id>
+获取用户画像信息
+
+**参数：**
+- `user_id` (路径参数): 用户ID
+
+**响应示例：**
+```json
+{
+    "user_id": 1,
+    "profile": {
+        "total_ratings": 85,
+        "avg_rating": 3.8,
+        "rating_std": 0.9,
+        "rating_distribution": {
+            "1.0": 2,
+            "2.0": 8,
+            "3.0": 25,
+            "4.0": 35,
+            "5.0": 15
+        },
+        "top_genres": ["Drama", "Action", "Comedy"],
+        "preferences": {
+            "highly_rated_movies": ["The Shawshank Redemption", "The Godfather"],
+            "most_watched_year": 2010
+        }
+    }
+}
+```
+
+### GET /api/collaborative/top-users
+获取最活跃用户
+
+**参数：**
+- `n` (可选): 用户数量，默认为10，最大100
+
+**响应示例：**
+```json
+{
+    "top_users": [
+        {
+            "user_id": 42,
+            "rating_count": 100,
+            "avg_rating": 3.5,
+            "rating_std": 1.2
+        },
+        {
+            "user_id": 156,
+            "rating_count": 98,
+            "avg_rating": 3.8,
+            "rating_std": 0.9
+        }
+    ],
+    "count": 10
 }
 ```
 
