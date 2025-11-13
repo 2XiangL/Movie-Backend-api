@@ -2,12 +2,22 @@
 
 基于Flask的电影推荐系统后端API，支持内容推荐和协同过滤两种推荐算法。
 
-## 功能特性
+## 安装和运行
 
-- 内容推荐算法（基于余弦相似度）
-- 协同过滤算法（基于矩阵分解）
-- SQLite数据库支持
-- RESTful API设计
+1. 安装依赖:
+   ```bash
+   uv sync
+   ```
+
+2. 启动服务:
+   ```bash
+   uv run python app.py
+   ```
+
+3. 访问API:
+   ```
+   http://127.0.0.1:5000
+   ```
 
 ## API接口文档
 
@@ -798,54 +808,3 @@
   }
   ```
 
-## 技术栈
-
-- **后端框架**: Flask
-- **推荐算法**: 内容推荐 + 协同过滤
-- **数据库**: SQLite
-- **数据处理**: Pandas, NumPy
-- **相似度计算**: Cosine Similarity, Matrix Factorization
-
-## 安装和运行
-
-1. 安装依赖:
-   ```bash
-   uv sync
-   ```
-
-2. 启动服务:
-   ```bash
-   uv run python app.py
-   ```
-
-3. 访问API:
-   ```
-   http://127.0.0.1:5000
-   ```
-
-## 项目结构
-
-```
-Movie-Backend-api/
-├── app.py                 # Flask应用入口
-├── config/
-│   └── settings.py        # 配置文件
-├── routes/
-│   ├── content_based.py   # 内容推荐路由
-│   ├── collaborative.py   # 协同过滤路由
-│   └── common.py          # 通用路由
-├── utils/
-│   ├── cli/
-│   │   ├── recommender.py # 推荐算法实现
-│   │   └── data_processor.py # 数据处理
-│   └── collaborative_filtering/
-│       └── cf_data_processor.py # 协同过滤数据处理
-└── README.md              # 项目文档
-```
-
-## 注意事项
-
-- 所有电影相关的JSON响应都包含`movie_id`字段
-- 支持通过电影名称搜索相似电影
-- 数据库模式已优化，性能可靠
-- 所有示例响应都是基于真实API测试结果
