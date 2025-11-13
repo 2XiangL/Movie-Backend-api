@@ -10,6 +10,7 @@ sys.path.insert(0, str(project_root))
 
 from utils.collaborative_filtering.cf_data_processor import CollaborativeDataProcessor
 from utils.collaborative_filtering.cf_recommender import CollaborativeFilteringRecommender
+from utils.common import convert_numpy_types
 from config.settings import Config
 
 collaborative_bp = Blueprint('collaborative', __name__)
@@ -49,21 +50,6 @@ def recommend_for_user(user_id):
     Query Parameters:
     - n: 推荐数量 (可选，默认为10)
     """
-    def convert_numpy_types(obj):
-        import numpy as np
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.floating):
-            return float(obj)
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        elif isinstance(obj, dict):
-            return {key: convert_numpy_types(value) for key, value in obj.items()}
-        elif isinstance(obj, list):
-            return [convert_numpy_types(item) for item in obj]
-        else:
-            return obj
-
     try:
         n = request.args.get('n', type=int, default=10)
         if n <= 0 or n > 50:
@@ -106,21 +92,6 @@ def similar_movies(movie_id):
     Query Parameters:
     - n: 结果数量 (可选，默认为10)
     """
-    def convert_numpy_types(obj):
-        import numpy as np
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.floating):
-            return float(obj)
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        elif isinstance(obj, dict):
-            return {key: convert_numpy_types(value) for key, value in obj.items()}
-        elif isinstance(obj, list):
-            return [convert_numpy_types(item) for item in obj]
-        else:
-            return obj
-
     try:
         n = request.args.get('n', type=int, default=10)
         if n <= 0 or n > 50:
@@ -151,8 +122,8 @@ def similar_movies(movie_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@collaborative_bp.route('/similar-movies-by-name', methods=['GET'])
-def similar_movies_by_name():
+@collaborative_bp.route('/find-similar-by-name', methods=['GET'])
+def find_similar_by_name():
     """
     通过电影名称查找相似电影
 
@@ -251,21 +222,6 @@ def similar_users(user_id):
     Query Parameters:
     - n: 结果数量 (可选，默认为10)
     """
-    def convert_numpy_types(obj):
-        import numpy as np
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.floating):
-            return float(obj)
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        elif isinstance(obj, dict):
-            return {key: convert_numpy_types(value) for key, value in obj.items()}
-        elif isinstance(obj, list):
-            return [convert_numpy_types(item) for item in obj]
-        else:
-            return obj
-
     try:
         n = request.args.get('n', type=int, default=10)
         if n <= 0 or n > 50:
@@ -321,21 +277,6 @@ def search_movies():
     - q: 搜索关键词 (必需)
     - n: 结果数量 (可选，默认为10)
     """
-    def convert_numpy_types(obj):
-        import numpy as np
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.floating):
-            return float(obj)
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        elif isinstance(obj, dict):
-            return {key: convert_numpy_types(value) for key, value in obj.items()}
-        elif isinstance(obj, list):
-            return [convert_numpy_types(item) for item in obj]
-        else:
-            return obj
-
     try:
         query = request.args.get('q')
         if not query:
@@ -389,21 +330,6 @@ def top_users():
     Query Parameters:
     - n: 用户数量 (可选，默认为10)
     """
-    def convert_numpy_types(obj):
-        import numpy as np
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.floating):
-            return float(obj)
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        elif isinstance(obj, dict):
-            return {key: convert_numpy_types(value) for key, value in obj.items()}
-        elif isinstance(obj, list):
-            return [convert_numpy_types(item) for item in obj]
-        else:
-            return obj
-
     try:
         n = request.args.get('n', type=int, default=10)
         if n <= 0 or n > 100:
@@ -443,21 +369,6 @@ def system_stats():
     """
     获取系统统计信息
     """
-    def convert_numpy_types(obj):
-        import numpy as np
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.floating):
-            return float(obj)
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        elif isinstance(obj, dict):
-            return {key: convert_numpy_types(value) for key, value in obj.items()}
-        elif isinstance(obj, list):
-            return [convert_numpy_types(item) for item in obj]
-        else:
-            return obj
-
     try:
         _, movies_df, ratings_df = get_cf_system()
         rec = get_cf_system()[0]

@@ -23,22 +23,7 @@
 
 ### 基础接口
 
-#### 1. 健康检查
-- **接口**: `GET /api/health`
-- **描述**: 检查API服务状态
-- **示例请求**:
-  ```bash
-  curl http://127.0.0.1:5000/api/health
-  ```
-- **示例响应**:
-  ```json
-  {
-    "message": "Movie Recommendation API is running",
-    "status": "healthy"
-  }
-  ```
-
-#### 2. 系统信息
+#### 1. 系统信息
 - **接口**: `GET /api/info`
 - **描述**: 获取系统信息和数据状态
 - **示例请求**:
@@ -66,6 +51,21 @@
     },
     "system": "Movie Recommendation API",
     "version": "1.0.0"
+  }
+  ```
+
+#### 2. 健康检查
+- **接口**: `GET /api/health`
+- **描述**: 检查API服务状态
+- **示例请求**:
+  ```bash
+  curl http://127.0.0.1:5000/api/health
+  ```
+- **示例响应**:
+  ```json
+  {
+    "message": "Movie Recommendation API is running",
+    "status": "healthy"
   }
   ```
 
@@ -355,7 +355,7 @@
   ```
 
 #### 10. 相似电影（按名称）
-- **接口**: `GET /api/collaborative/similar-movies-by-name`
+- **接口**: `GET /api/collaborative/find-similar-by-name`
 - **参数**:
   - `movie_name` (字符串) - 电影名称 (必需)
   - `n` (整数) - 结果数量 (可选，默认为10，最大50)
@@ -363,7 +363,7 @@
 - **描述**: 通过电影名称搜索相似电影
 - **示例请求**:
   ```bash
-  curl "http://127.0.0.1:5000/api/collaborative/similar-movies-by-name?movie_name=Toy%20Story&n=5"
+  curl "http://127.0.0.1:5000/api/collaborative/find-similar-by-name?movie_name=Toy%20Story&n=5"
   ```
 - **示例响应**:
   ```json

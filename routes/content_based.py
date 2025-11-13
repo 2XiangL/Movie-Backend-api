@@ -8,6 +8,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from utils.cli.recommender import MovieRecommender
+from utils.common import convert_numpy_types
 from config.settings import Config
 
 content_bp = Blueprint('content_based', __name__)
@@ -34,21 +35,6 @@ def recommend_movies():
     - movie: 电影标题 (必需)
     - n: 推荐数量 (可选，默认为10)
     """
-    def convert_numpy_types(obj):
-        import numpy as np
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.floating):
-            return float(obj)
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        elif isinstance(obj, dict):
-            return {key: convert_numpy_types(value) for key, value in obj.items()}
-        elif isinstance(obj, list):
-            return [convert_numpy_types(item) for item in obj]
-        else:
-            return obj
-
     try:
         movie_title = request.args.get('movie')
         if not movie_title:
@@ -119,21 +105,6 @@ def movie_details():
     Query Parameters:
     - movie: 电影标题 (必需)
     """
-    def convert_numpy_types(obj):
-        import numpy as np
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.floating):
-            return float(obj)
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        elif isinstance(obj, dict):
-            return {key: convert_numpy_types(value) for key, value in obj.items()}
-        elif isinstance(obj, list):
-            return [convert_numpy_types(item) for item in obj]
-        else:
-            return obj
-
     try:
         movie_title = request.args.get('movie')
         if not movie_title:

@@ -18,11 +18,6 @@ def create_app():
     app.register_blueprint(collaborative_bp, url_prefix='/api/collaborative')
     app.register_blueprint(common_bp, url_prefix='/api')
 
-    # Health check endpoint
-    @app.route('/health')
-    def health_check():
-        return {"status": "healthy", "message": "Movie Recommendation API is running"}
-
     return app
 
 if __name__ == '__main__':
